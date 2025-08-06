@@ -1,7 +1,9 @@
 import express from 'express';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import { unifiedAuth } from './middlewares/unifiedAuth';
 import routes from './routes';
+import authRoutes from './routes/authRoutes';
 import { errorHandler, notFoundHandler } from './common/errorHandler';
 
 dotenv.config();
@@ -16,6 +18,12 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
 }
 
 // Middleware
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:4028', 'http://localhost:5173'], // Allow frontend origins
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -33,6 +41,9 @@ app.get('/health', (_, res) => res.json({
   timestamp: new Date().toISOString(),
   version: '1.0.0'
 }));
+
+// Public auth routes (no auth middleware)
+app.use('/api/v1/auth', authRoutes);
 
 // Apply unified auth middleware to all API routes
 app.use('/api/v1', unifiedAuth);

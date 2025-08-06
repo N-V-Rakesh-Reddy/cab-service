@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import Icon from '../AppIcon';
 import Button from './Button';
 import Input from './Input';
+import ApiService, { ApiError } from '../../utils/api';
 
 const AuthModal = ({ isOpen = false, onClose = () => {}, onSuccess = () => {}, className = '' }) => {
   const [step, setStep] = useState('phone'); // 'phone', 'otp', 'success'
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
+  const [sessionId, setSessionId] = useState(''); // Store sessionId from send-otp response
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
@@ -20,6 +22,7 @@ const AuthModal = ({ isOpen = false, onClose = () => {}, onSuccess = () => {}, c
       setStep('phone');
       setPhoneNumber('');
       setOtp('');
+      setSessionId('');
       setError('');
       setCountdown(0);
     }
@@ -49,12 +52,20 @@ const AuthModal = ({ isOpen = false, onClose = () => {}, onSuccess = () => {}, c
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call the real backend API
+      const result = await ApiService.sendOtp(phoneNumber);
+      
+      // Store the sessionId for the verify-otp call
+      setSessionId(result.sessionId);
       setStep('otp');
       setCountdown(30);
     } catch (err) {
-      setError('Failed to send OTP. Please try again.');
+      console.error('Send OTP error:', err);
+      if (err instanceof ApiError) {
+        setError(err.message || 'Failed to send OTP. Please try again.');
+      } else {
+        setError('Network error. Please check your connection.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -69,24 +80,45 @@ const AuthModal = ({ isOpen = false, onClose = () => {}, onSuccess = () => {}, c
       return;
     }
 
+    if (!sessionId) {
+      setError('Session expired. Please request a new OTP.');
+      setStep('phone');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call the real backend API
+      const result = await ApiService.verifyOtp(phoneNumber, otp, sessionId);
+      
+      // Store authentication tokens
+      if (result.accessToken) {
+        localStorage.setItem('auth_token', result.accessToken);
+      }
+      if (result.refreshToken) {
+        localStorage.setItem('refresh_token', result.refreshToken);
+      }
+      
       setStep('success');
       
       // Auto-close and trigger success after showing success state
       setTimeout(() => {
         onSuccess({
-          name: 'User',
-          phone: phoneNumber,
-          id: Date.now()
+          ...result.user,
+          name: result.user.full_name || result.user.mobile_number,
+          phone: result.user.mobile_number,
+          token: result.accessToken
         });
         onClose();
       }, 2000);
     } catch (err) {
-      setError('Invalid OTP. Please try again.');
+      console.error('Verify OTP error:', err);
+      if (err instanceof ApiError) {
+        setError(err.message || 'Invalid OTP. Please try again.');
+      } else {
+        setError('Network error. Please check your connection.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -99,11 +131,19 @@ const AuthModal = ({ isOpen = false, onClose = () => {}, onSuccess = () => {}, c
     setError('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call the real backend API to resend OTP
+      const result = await ApiService.sendOtp(phoneNumber);
+      
+      // Update sessionId for the new OTP
+      setSessionId(result.sessionId);
       setCountdown(30);
     } catch (err) {
-      setError('Failed to resend OTP. Please try again.');
+      console.error('Resend OTP error:', err);
+      if (err instanceof ApiError) {
+        setError(err.message || 'Failed to resend OTP. Please try again.');
+      } else {
+        setError('Network error. Please check your connection.');
+      }
     } finally {
       setIsLoading(false);
     }
