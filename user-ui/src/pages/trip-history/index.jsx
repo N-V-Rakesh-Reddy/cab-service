@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import ApiService from '../../utils/api';
 import Header from '../../components/ui/Header';
 import MobileBottomNavigation from '../../components/ui/MobileBottomNavigation';
 import TripStatusIndicator from '../../components/ui/TripStatusIndicator';
@@ -24,22 +25,95 @@ const TripHistory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [trips, setTrips] = useState([]);
+  const [error, setError] = useState(null);
   const [modalState, setModalState] = useState({
     isOpen: false,
     type: 'details',
     trip: null
   });
 
-  // Mock user data
+  // Load user data from localStorage
   useEffect(() => {
-    const mockUser = {
-      id: 1,
-      name: "Rajesh Kumar",
-      phone: "+91 98765 43210",
-      email: "rajesh.kumar@email.com"
-    };
-    setUser(mockUser);
+    const savedUser = localStorage.getItem('cabBookerUser');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
   }, []);
+
+  // Fetch trips from API
+  const fetchTrips = async (refresh = false) => {
+    if (!user) return;
+
+    try {
+      if (refresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      const bookings = await ApiService.getUserBookingHistory({ limit: 50 });
+      
+      // Transform API data to match frontend structure
+      const transformedTrips = bookings.map(booking => ({
+        id: booking.id,
+        bookingId: booking.id.slice(0, 12).toUpperCase(),
+        from: booking.trip_segments?.find(s => s.type === 'pickup')?.location_name || 'Unknown',
+        to: booking.trip_segments?.find(s => s.type === 'drop')?.location_name || 'Unknown',
+        date: booking.scheduled_at,
+        type: booking.booking_type?.replace('_', '-'), // Convert back to frontend format
+        vehicleType: booking.vehicle_type || 'Sedan',
+        fare: booking.total_price || 0,
+        status: booking.status,
+        duration: booking.estimated_duration ? `${Math.round(booking.estimated_duration / 60)} hr ${booking.estimated_duration % 60} min` : 'N/A',
+        distance: booking.estimated_distance ? `${booking.estimated_distance} km` : 'N/A',
+        paymentMethod: booking.payment_method || (booking.payment_status === 'paid' ? 'Online' : 'Pending'),
+        category: getCategoryFromStatus(booking.status),
+        stops: booking.trip_segments?.filter(s => s.type === 'intermediate').map(s => s.location_name) || [],
+        rated: false,
+        driver: booking.driver_id ? {
+          name: 'Driver Name', // This would be populated from joined driver data
+          phone: '+91 98765 xxxxx',
+          vehicle: 'Vehicle Details', // This would come from driver.vehicle_model + driver.vehicle_number
+          rating: 4.5
+        } : null
+      }));
+
+      setTrips(transformedTrips);
+    } catch (err) {
+      console.error('Failed to fetch trips:', err);
+      setError(err.message || 'Failed to load trip history');
+      // Fallback to empty array
+      setTrips([]);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  // Helper function to categorize trips
+  const getCategoryFromStatus = (status) => {
+    switch (status) {
+      case 'ongoing':
+        return 'current';
+      case 'pending':
+      case 'confirmed':
+        return 'upcoming';
+      case 'completed':
+      case 'cancelled':
+        return 'completed';
+      default:
+        return 'completed';
+    }
+  };
+
+  // Load trips when user is available
+  useEffect(() => {
+    if (user) {
+      fetchTrips();
+    }
+  }, [user]);
 
   // Mock trips data
   const mockTrips = [
@@ -175,7 +249,7 @@ const TripHistory = () => {
   ];
 
   // Filter trips based on active tab and search query
-  const filteredTrips = mockTrips?.filter(trip => {
+  const filteredTrips = trips?.filter(trip => {
     const matchesTab = trip?.category === activeTab;
     const matchesSearch = searchQuery === '' || 
       trip?.from?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
@@ -187,13 +261,13 @@ const TripHistory = () => {
 
   // Get trip counts for tabs
   const tripCounts = {
-    current: mockTrips?.filter(trip => trip?.category === 'current')?.length,
-    upcoming: mockTrips?.filter(trip => trip?.category === 'upcoming')?.length,
-    past: mockTrips?.filter(trip => trip?.category === 'past')?.length
+    current: trips?.filter(trip => trip?.category === 'current')?.length || 0,
+    upcoming: trips?.filter(trip => trip?.category === 'upcoming')?.length || 0,
+    completed: trips?.filter(trip => trip?.category === 'completed')?.length || 0
   };
 
   // Get active trip for status indicator
-  const activeTrip = mockTrips?.find(trip => trip?.status === 'ongoing');
+  const activeTrip = trips?.find(trip => trip?.status === 'ongoing');
 
   useEffect(() => {
     // Simulate loading
@@ -213,6 +287,12 @@ const TripHistory = () => {
     setIsAuthModalOpen(false);
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    setTrips([]);
+    navigate('/landing-page');
+  };
+
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     setSearchQuery('');
@@ -227,10 +307,9 @@ const TripHistory = () => {
   };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate refresh
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    if (user) {
+      await fetchTrips(true);
+    }
   };
 
   const handleTrackTrip = (trip) => {
@@ -327,6 +406,7 @@ const TripHistory = () => {
       <Header 
         user={user} 
         onAuthRequired={handleAuthRequired}
+        onLogout={handleLogout}
       />
       {/* Trip Status Indicator */}
       <TripStatusIndicator

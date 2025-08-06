@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import ApiService, { isUserAuthenticated } from '../../utils/api';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Header from '../../components/ui/Header';
@@ -66,8 +67,28 @@ const TripBookingForm = () => {
   useEffect(() => {
     // Check for saved user data
     const savedUser = localStorage.getItem('cabBookerUser');
+    
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const userData = JSON.parse(savedUser);
+      
+      // Check if user is properly authenticated (has valid token)
+      const authToken = localStorage.getItem('auth_token');
+      const userToken = userData.token;
+      console.log('🔍 Auth check:', { 
+        hasAuthToken: !!authToken, 
+        hasUserToken: !!userToken,
+        isAuthenticated: isUserAuthenticated()
+      });
+      
+      if (isUserAuthenticated()) {
+        setUser(userData);
+      } else {
+        // Clear invalid user data and force re-authentication
+        console.log('⚠️ User exists but no valid auth token found, clearing data and requiring re-authentication');
+        localStorage.removeItem('cabBookerUser');
+        setUser(null);
+        setShowAuthModal(true);
+      }
     }
 
     // Get initial trip type from URL params if available
@@ -91,9 +112,25 @@ const TripBookingForm = () => {
   };
 
   const handleAuthSuccess = (userData) => {
+    console.log('📝 handleAuthSuccess called with:', userData);
+    
     setUser(userData);
     localStorage.setItem('cabBookerUser', JSON.stringify(userData));
+    
+    // Also store the token separately for API requests
+    if (userData.token) {
+      localStorage.setItem('auth_token', userData.token);
+      console.log('✅ Token stored in auth_token');
+    } else {
+      console.log('⚠️ No token in userData');
+    }
+    
     setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    navigate('/landing-page');
   };
 
   const validateForm = () => {
@@ -178,53 +215,50 @@ const TripBookingForm = () => {
       return;
     }
 
+    // Check if user is authenticated
+    if (!user) {
+      handleAuthRequired();
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock booking data with new fields
+      // Prepare booking data for API
       const bookingData = {
-        id: `booking_${Date.now()}`,
-        tripType,
-        pickupLocation,
-        dropLocation,
-        pickupDate,
-        pickupTime,
-        returnDate,
-        returnTime,
-        passengerCount,
-        vehicleType,
-        specialRequests,
-        timePackage: tripType === 'local' ? timePackage : null,
-        flightDetails: tripType === 'airport' ? {
-          flightNumber,
-          airline,
-          isArrival
-        } : null,
-        packageData: tripType === 'package' ? location.state?.packageData : null,
-        intermediateStops: intermediateStops?.filter(stop => stop.trim()),
-        status: 'confirmed',
-        createdAt: new Date()?.toISOString()
+        booking_type: tripType.replace('-', '_'), // Convert to API format (one-way -> one_way)
+        package_id: tripType === 'package' ? location.state?.packageData?.id : undefined,
+        vehicle_type: vehicleType,
+        scheduled_at: new Date(`${pickupDate} ${pickupTime}`).toISOString(),
+        return_at: tripType === 'round-trip' ? new Date(`${returnDate} ${returnTime}`).toISOString() : undefined,
+        pickup_location: pickupLocation,
+        drop_location: tripType !== 'local' ? dropLocation : undefined,
+        intermediate_stops: intermediateStops?.filter(stop => stop.trim()),
+        special_requests: specialRequests,
+        passenger_count: passengerCount,
+        time_package: tripType === 'local' ? timePackage : undefined,
+        flight_details: tripType === 'airport' ? {
+          flight_number: flightNumber,
+          airline: airline,
+          is_arrival: isArrival
+        } : undefined
       };
 
-      // Save to localStorage for demo
-      const existingBookings = JSON.parse(localStorage.getItem('cabBookerBookings') || '[]');
-      existingBookings?.push(bookingData);
-      localStorage.setItem('cabBookerBookings', JSON.stringify(existingBookings));
+      // Call API to create booking
+      const createdBooking = await ApiService.createBooking(bookingData);
 
-      // Navigate to dashboard
+      // Navigate to dashboard with success message
       navigate('/user-dashboard', { 
         state: { 
           message: 'Trip booked successfully!',
-          bookingId: bookingData?.id 
+          bookingId: createdBooking?.id 
         }
       });
 
     } catch (error) {
       console.error('Booking failed:', error);
-      setErrors({ submit: 'Failed to book trip. Please try again.' });
+      const errorMessage = error?.message || 'Failed to book trip. Please try again.';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -270,6 +304,7 @@ const TripBookingForm = () => {
       <Header 
         user={user} 
         onAuthRequired={handleAuthRequired}
+        onLogout={handleLogout}
       />
       <TripStatusIndicator 
         activeTrip={activeTrip}
@@ -511,6 +546,8 @@ const TripBookingForm = () => {
               timePackage={timePackage}
               intermediateStops={intermediateStops}
               packageData={packageData}
+              pickupLocation={pickupLocation}
+              dropLocation={dropLocation}
             />
           </motion.div>
 

@@ -71,9 +71,9 @@ export const unifiedAuth = async (req: Request, res: Response, next: NextFunctio
         });
 
         req.user = {
-          id: decoded.userId,
+          id: decoded.id,
           email: decoded.email,
-          phone: decoded.phone
+          phone: decoded.mobile
         };
         req.isAdmin = false;
         return next();

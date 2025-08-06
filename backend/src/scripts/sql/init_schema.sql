@@ -37,10 +37,12 @@ CREATE TABLE IF NOT EXISTS packages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR NOT NULL,
     description TEXT,
+    location VARCHAR,
     duration_days INT,
     price DECIMAL,
     vehicle_type VARCHAR,
     tags TEXT[],
+    image_url VARCHAR,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -60,6 +62,20 @@ CREATE TABLE IF NOT EXISTS package_segments (
     location_name TEXT,
     lat DECIMAL(9,6),
     lng DECIMAL(9,6)
+);
+
+-- DRIVERS (moved before BOOKINGS to satisfy foreign key constraint)
+CREATE TABLE IF NOT EXISTS drivers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR,
+    phone_number VARCHAR UNIQUE,
+    license_number VARCHAR UNIQUE,
+    rating DECIMAL(2,1) DEFAULT 4.5,
+    is_active BOOLEAN DEFAULT TRUE,
+    vehicle_model VARCHAR,
+    vehicle_number VARCHAR,
+    vehicle_type VARCHAR DEFAULT 'sedan',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- BOOKINGS
@@ -92,7 +108,12 @@ CREATE TABLE IF NOT EXISTS bookings (
     return_at TIMESTAMP,
     total_price DECIMAL,
     payment_status payment_status,
-    driver_id UUID,
+    driver_id UUID REFERENCES drivers(id),
+    estimated_distance DECIMAL(10,2),
+    estimated_duration INTEGER, -- in minutes
+    payment_method VARCHAR DEFAULT 'online',
+    special_requests TEXT,
+    passenger_count INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -106,17 +127,6 @@ CREATE TABLE IF NOT EXISTS trip_segments (
     location_name TEXT,
     lat DECIMAL(9,6),
     lng DECIMAL(9,6)
-);
-
--- DRIVERS
-CREATE TABLE IF NOT EXISTS drivers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR,
-    phone_number VARCHAR,
-    license_number VARCHAR,
-    rating DECIMAL(2,1),
-    is_active BOOLEAN,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- TEST_ITEMS (DUMMY TABLE FOR TESTING)

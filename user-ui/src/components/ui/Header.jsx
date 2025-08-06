@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
+import ApiService from '../../utils/api';
 
-const Header = ({ user = null, onAuthRequired = () => {}, className = '' }) => {
+const Header = ({ user = null, onAuthRequired = () => {}, onLogout = () => {}, className = '' }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
@@ -46,10 +47,25 @@ const Header = ({ user = null, onAuthRequired = () => {}, className = '' }) => {
     setIsMobileMenuOpen(false);
   };
 
-  const handleAuthAction = () => {
+  const handleAuthAction = async () => {
     if (user) {
       // Handle logout
-      console.log('Logout clicked');
+      try {
+        await ApiService.logout();
+        // Clear local storage
+        localStorage.removeItem('cabBookerUser');
+        localStorage.removeItem('cabBookerToken');
+        localStorage.removeItem('auth_token');
+        // Call parent logout handler
+        onLogout();
+      } catch (error) {
+        console.error('Logout failed:', error);
+        // Even if API fails, clear local data and logout
+        localStorage.removeItem('cabBookerUser');
+        localStorage.removeItem('cabBookerToken');
+        localStorage.removeItem('auth_token');
+        onLogout();
+      }
     } else {
       onAuthRequired();
     }

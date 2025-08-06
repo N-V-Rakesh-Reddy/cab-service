@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import ApiService from '../../../utils/api';
 
 const FareEstimation = ({
   tripType,
@@ -9,9 +10,55 @@ const FareEstimation = ({
   timePackage = '8hr',
   intermediateStops = [],
   packageData = null,
-  className = '', breakdown, vehicleCharges, taxes
+  className = '',
+  pickupLocation,
+  dropLocation
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [fareData, setFareData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch fare estimate from API
+  useEffect(() => {
+    const fetchFareEstimate = async () => {
+      // Don't fetch for package bookings
+      if (tripType === 'package' && packageData) {
+        return;
+      }
+
+      // Don't fetch if essential data is missing
+      if (!tripType || !vehicleType) {
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = {
+          booking_type: tripType.replace('-', '_'), // Convert to API format
+          vehicle_type: vehicleType,
+          pickup_location: pickupLocation || 'Unknown',
+          drop_location: dropLocation || 'Unknown',
+          time_package: timePackage,
+          passenger_count: passengerCount
+        };
+
+        const result = await ApiService.getFareEstimate(params);
+        setFareData(result);
+      } catch (err) {
+        console.error('Failed to fetch fare estimate:', err);
+        setError(err?.message || 'Failed to get fare estimate');
+        // Fallback to local calculation
+        setFareData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFareEstimate();
+  }, [tripType, vehicleType, pickupLocation, dropLocation, timePackage, passengerCount, packageData]);
 
   const getVehicleMultiplier = (vehicle) => {
     const multipliers = {
@@ -36,50 +83,51 @@ const FareEstimation = ({
       };
     }
 
+    // Use API data if available
+    if (fareData && !loading && !error) {
+      const stopCharges = intermediateStops?.filter((stop) => stop?.trim())?.length * 30; // Additional stop charges
+      return {
+        baseFare: fareData.base_fare || 0,
+        vehicleCharges: 0, // Already included in base fare from API
+        stopCharges: stopCharges,
+        platformFee: Math.round((fareData.base_fare || 0) * 0.05),
+        taxes: Math.round(fareData.total_fare * 0.05) || 0,
+        total: (fareData.total_fare || 0) + stopCharges
+      };
+    }
+
+    // Fallback to local calculation
     let baseFare = 0;
     const vehicleMultiplier = getVehicleMultiplier(vehicleType);
 
     switch (tripType) {
       case 'one-way':
-        baseFare = Math.round(150 * vehicleMultiplier); // Base one-way fare with vehicle multiplier
+        baseFare = Math.round(150 * vehicleMultiplier);
         break;
       case 'round-trip':
-        baseFare = Math.round(280 * vehicleMultiplier); // Base round-trip fare with vehicle multiplier
+        baseFare = Math.round(280 * vehicleMultiplier);
         break;
       case 'local':
         const timeMultipliers = { '4hr': 0.7, '8hr': 1.0, '12hr': 1.4 };
         baseFare = Math.round(400 * (timeMultipliers?.[timePackage] || 1) * vehicleMultiplier);
         break;
       case 'airport':
-        baseFare = Math.round(200 * vehicleMultiplier); // Base airport fare with vehicle multiplier
+        baseFare = Math.round(200 * vehicleMultiplier);
         break;
       default:
         baseFare = Math.round(150 * vehicleMultiplier);
     }
 
     // Additional charges
-    let additionalCharges = 0;
-
-    // Intermediate stops
     const stopCharges = intermediateStops?.filter((stop) => stop?.trim())?.length * 50;
-    additionalCharges += stopCharges;
-    breakdown?.push({ label: `Intermediate stops (${intermediateStops?.length})`, amount: stopCharges });
-
-    // Platform fee
     const platformFee = Math.round(baseFare * 0.05);
-    additionalCharges += platformFee;
-    breakdown?.push({ label: 'Platform fee', amount: platformFee });
-
-    // GST
-    const subtotal = baseFare + additionalCharges;
-    const gst = Math.round(subtotal * 0.05);
-    breakdown?.push({ label: 'GST (5%)', amount: gst });
-
-    const total = subtotal + gst;
+    const subtotal = baseFare + stopCharges + platformFee;
+    const taxes = Math.round(subtotal * 0.05);
+    const total = subtotal + taxes;
 
     return {
       baseFare,
-      vehicleCharges,
+      vehicleCharges: 0,
       stopCharges,
       platformFee,
       taxes,
