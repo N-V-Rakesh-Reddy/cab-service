@@ -15,6 +15,25 @@ export interface ApiResponse<T = any> {
 
 export abstract class BaseController {
   /**
+   * Static method for sending success responses
+   */
+  static sendSuccessResponse<T>(
+    res: Response, 
+    data: T, 
+    message?: string,
+    statusCode: number = 200
+  ): void {
+    res.status(statusCode).json({
+      success: true,
+      data,
+      message,
+      meta: {
+        requestId: Math.random().toString(36).substring(7),
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
+  /**
    * Generate request ID from headers or create new one
    */
   protected getRequestId(req: Request): string {

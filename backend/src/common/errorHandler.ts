@@ -6,6 +6,18 @@ export interface CustomError extends Error {
   status?: string;
 }
 
+export class AppError extends Error {
+  public statusCode: number;
+  public status: string;
+
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.statusCode = statusCode;
+    this.status = statusCode < 500 ? 'fail' : 'error';
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
 export const errorHandler = (
   error: CustomError,
   req: Request,

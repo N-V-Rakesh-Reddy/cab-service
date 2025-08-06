@@ -22,7 +22,7 @@ class ApiService {
     };
 
     // Add auth token if available
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('cabBookerToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -115,6 +115,39 @@ class ApiService {
 
   static async getUserBookings() {
     const response = await this.get('/users/bookings');
+    return response.data;
+  }
+
+  // Booking methods
+  static async createBooking(bookingData) {
+    const response = await this.post('/bookings', bookingData);
+    return response.data;
+  }
+
+  static async getUserBookingHistory(options = {}) {
+    const queryParams = new URLSearchParams();
+    if (options.status) queryParams.append('status', options.status);
+    if (options.limit) queryParams.append('limit', options.limit.toString());
+    if (options.offset) queryParams.append('offset', options.offset.toString());
+    
+    const endpoint = `/bookings${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await this.get(endpoint);
+    return response.data;
+  }
+
+  static async getBookingById(bookingId) {
+    const response = await this.get(`/bookings/${bookingId}`);
+    return response.data;
+  }
+
+  static async cancelBooking(bookingId) {
+    const response = await this.patch(`/bookings/${bookingId}/cancel`);
+    return response.data;
+  }
+
+  static async getFareEstimate(params) {
+    const queryParams = new URLSearchParams(params);
+    const response = await this.get(`/bookings/fare-estimate?${queryParams.toString()}`);
     return response.data;
   }
 }
