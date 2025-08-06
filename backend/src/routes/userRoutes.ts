@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { UserController } from '../controllers/userController';
+import { UserController } from '../controllers/UserController';
 
 const router = Router();
+const userController = new UserController();
 
-// User profile routes
-router.get('/profile', UserController.getProfile);
-router.put('/profile', UserController.updateProfile);
+// User routes (no /users prefix needed since it's added in main routes)
+router.get('/:id', userController.getUser.bind(userController));
+router.put('/:id', userController.updateUser.bind(userController));
+router.get('/:id/bookings', userController.getUserBookings.bind(userController));
+router.get('/', userController.listUsers.bind(userController));
 
-// User bookings
-router.get('/bookings', UserController.getUserBookings);
-
-export { router as userRoutes };
+export default router;

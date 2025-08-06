@@ -1,13 +1,18 @@
 import { Router } from 'express';
-import authRoutes from '../modules/auth/auth.routes';
-import { testRoutes } from './testRoutes';
-import { userRoutes } from './userRoutes';
+import authRoutes from './authRoutes';
+import userRoutes from './userRoutes';
 
 const router = Router();
 
+// Mount route modules
 router.use('/auth', authRoutes);
-router.use('/test', testRoutes);
-router.use('/user', userRoutes);
-router.get('/health', (_, res) => res.json({ status: 'ok' }));
+router.use('/users', userRoutes);
+
+// Health check
+router.get('/health', (_, res) => res.json({ 
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  version: '1.0.0'
+}));
 
 export default router;

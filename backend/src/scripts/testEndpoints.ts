@@ -36,7 +36,7 @@ async function makeRequest(url: string, options: any = {}) {
     return { status: response.status, data };
   } catch (error) {
     console.error(`Error making request to ${url}:`, error);
-    return { status: 500, error: error.message };
+    return { status: 500, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
