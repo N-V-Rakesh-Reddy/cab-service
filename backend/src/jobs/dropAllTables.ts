@@ -46,9 +46,11 @@ async function dropAllTables() {
     console.log('✅ All tables and types dropped successfully');
   } catch (err) {
     console.error('❌ Error dropping tables and types:', err);
+    process.exit(1);
   } finally {
     await client.end();
     console.log('🛑 DB connection closed');
+    process.exit(0);
   }
 }
 

@@ -91,10 +91,15 @@ const AuthModal = ({ isOpen = false, onClose = () => {}, onSuccess = () => {}, c
     try {
       // Call the real backend API
       const result = await ApiService.verifyOtp(phoneNumber, otp, sessionId);
+      console.log('🔍 Backend verify-otp response:', result);
       
-      // Store authentication tokens
-      if (result.accessToken) {
-        localStorage.setItem('auth_token', result.accessToken);
+      // Store authentication tokens (backend returns 'token', not 'accessToken')
+      const token = result.token || result.accessToken;
+      if (token) {
+        localStorage.setItem('auth_token', token);
+        console.log('✅ Token stored to localStorage');
+      } else {
+        console.log('⚠️ No token in response');
       }
       if (result.refreshToken) {
         localStorage.setItem('refresh_token', result.refreshToken);
@@ -108,7 +113,7 @@ const AuthModal = ({ isOpen = false, onClose = () => {}, onSuccess = () => {}, c
           ...result.user,
           name: result.user.full_name || result.user.mobile_number,
           phone: result.user.mobile_number,
-          token: result.accessToken
+          token: token // Use the token we extracted above
         });
         onClose();
       }, 2000);

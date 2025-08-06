@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 import { 
   Booking, 
   BookingInsert, 
@@ -55,7 +55,7 @@ export class BookingService {
       };
 
       // Insert booking
-      const { data: booking, error: bookingError } = await supabase
+      const { data: booking, error: bookingError } = await supabaseAdmin
         .from('bookings')
         .insert([bookingToInsert])
         .select('*')
@@ -77,7 +77,7 @@ export class BookingService {
           lng: segment.lng
         }));
 
-        const { error: segmentsError } = await supabase
+        const { error: segmentsError } = await supabaseAdmin
           .from('trip_segments')
           .insert(segments);
 
@@ -110,7 +110,7 @@ export class BookingService {
   static async getBookingById(bookingId: string, userId?: string): Promise<ApiResponse<Booking & { trip_segments?: TripSegment[] }>> {
     try {
       // Query booking with optional user filter
-      let query = supabase
+      let query = supabaseAdmin
         .from('bookings')
         .select(`
           *,
@@ -156,7 +156,7 @@ export class BookingService {
     offset?: number;
   } = {}): Promise<ApiResponse<(Booking & { trip_segments?: TripSegment[] })[]>> {
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('bookings')
         .select(`
           *,
@@ -209,7 +209,7 @@ export class BookingService {
     userId?: string
   ): Promise<ApiResponse<Booking>> {
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('bookings')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', bookingId);
@@ -256,7 +256,7 @@ export class BookingService {
     userId?: string
   ): Promise<ApiResponse<Booking>> {
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('bookings')
         .update({ 
           payment_status: paymentStatus, 
@@ -303,7 +303,7 @@ export class BookingService {
   static async cancelBooking(bookingId: string, userId: string): Promise<ApiResponse<Booking>> {
     try {
       // First check if booking exists and belongs to user
-      const { data: existingBooking, error: fetchError } = await supabase
+      const { data: existingBooking, error: fetchError } = await supabaseAdmin
         .from('bookings')
         .select('*')
         .eq('id', bookingId)
@@ -320,7 +320,7 @@ export class BookingService {
       }
 
       // Update booking status to cancelled
-      const { data: booking, error } = await supabase
+      const { data: booking, error } = await supabaseAdmin
         .from('bookings')
         .update({ 
           status: 'cancelled' as BookingStatus,

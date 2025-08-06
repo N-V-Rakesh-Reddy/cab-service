@@ -8,7 +8,12 @@
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
     "lint": "eslint . --ext .ts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "drop-all-tables": "ts-node src/jobs/dropAllTables.ts",
+    "populate-dummy-data": "ts-node src/jobs/populateDummyData.ts",
+    "clean-dummy-data": "ts-node src/jobs/populateDummyData.ts clean",
+    "init-schema": "ts-node src/jobs/initSchema.ts",
+    "rls-policies": "ts-node src/jobs/rlsPolicies.ts"
   },
   "keywords": [],
   "author": "",

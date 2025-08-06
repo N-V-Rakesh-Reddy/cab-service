@@ -52,10 +52,12 @@ export interface Package {
   id: string; // UUID PRIMARY KEY
   title: string; // VARCHAR NOT NULL
   description?: string; // TEXT
+  location?: string; // VARCHAR
   duration_days?: number; // INT
   price?: number; // DECIMAL
   vehicle_type?: string; // VARCHAR
   tags?: string[]; // TEXT[]
+  image_url?: string; // VARCHAR
   is_active: boolean; // BOOLEAN DEFAULT TRUE
   created_at: string; // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   // Note: No updated_at field in this table
@@ -84,7 +86,12 @@ export interface Booking extends BaseEntity {
   return_at?: string; // TIMESTAMP
   total_price?: number; // DECIMAL
   payment_status?: PaymentStatus; // payment_status ENUM
-  driver_id?: string; // UUID
+  driver_id?: string; // UUID REFERENCES drivers(id)
+  estimated_distance?: number; // DECIMAL(10,2)
+  estimated_duration?: number; // INTEGER (minutes)
+  payment_method?: string; // VARCHAR
+  special_requests?: string; // TEXT
+  passenger_count?: number; // INTEGER
   // Note: updated_at is included from BaseEntity
 }
 
@@ -104,10 +111,13 @@ export interface TripSegment {
 export interface Driver {
   id: string; // UUID PRIMARY KEY
   name?: string; // VARCHAR
-  phone_number?: string; // VARCHAR
-  license_number?: string; // VARCHAR
+  phone_number?: string; // VARCHAR UNIQUE
+  license_number?: string; // VARCHAR UNIQUE
   rating?: number; // DECIMAL(2,1)
   is_active?: boolean; // BOOLEAN
+  vehicle_model?: string; // VARCHAR
+  vehicle_number?: string; // VARCHAR
+  vehicle_type?: string; // VARCHAR
   created_at: string; // TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   // Note: No updated_at field in this table
 }

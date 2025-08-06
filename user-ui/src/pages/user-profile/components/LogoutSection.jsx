@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import ApiService from '../../../utils/api';
 
 const LogoutSection = ({ onLogout, className = '' }) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -9,10 +10,23 @@ const LogoutSection = ({ onLogout, className = '' }) => {
   const handleLogout = async () => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call logout API
+      await ApiService.logout();
+      
+      // Clear local storage
+      localStorage.removeItem('cabBookerUser');
+      localStorage.removeItem('cabBookerToken');
+      localStorage.removeItem('auth_token');
+      
+      // Call parent logout handler
       onLogout();
     } catch (error) {
       console.error('Logout failed:', error);
+      // Even if API call fails, we should clear local data and logout
+      localStorage.removeItem('cabBookerUser');
+      localStorage.removeItem('cabBookerToken');
+      localStorage.removeItem('auth_token');
+      onLogout();
     } finally {
       setIsLoading(false);
     }

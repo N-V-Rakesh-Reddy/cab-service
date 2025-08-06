@@ -102,4 +102,30 @@ export class AuthController extends BaseController {
       this.handleError(error, res, requestId, 'Auth Refresh Token');
     }
   }
+
+  /**
+   * POST /auth/logout
+   * Logout user (invalidate token client-side)
+   */
+  async logout(req: Request, res: Response): Promise<void> {
+    const requestId = this.getRequestId(req);
+    const userId = req.user?.id;
+
+    this.logRequestStart(req, requestId, 'Auth Logout', { userId });
+
+    try {
+      // For JWT-based auth, logout is typically handled client-side
+      // But we can still log the logout event and return success
+      
+      this.logSuccess(requestId, 'Auth Logout', { userId });
+
+      this.sendSuccess(res, { 
+        message: 'Logged out successfully',
+        timestamp: new Date().toISOString() 
+      }, requestId, req.isAdmin || false);
+
+    } catch (error) {
+      this.handleError(error, res, requestId, 'Auth Logout');
+    }
+  }
 }

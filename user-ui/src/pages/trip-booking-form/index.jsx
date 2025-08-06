@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import ApiService from '../../utils/api';
+import ApiService, { isUserAuthenticated } from '../../utils/api';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Header from '../../components/ui/Header';
@@ -67,8 +67,28 @@ const TripBookingForm = () => {
   useEffect(() => {
     // Check for saved user data
     const savedUser = localStorage.getItem('cabBookerUser');
+    
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const userData = JSON.parse(savedUser);
+      
+      // Check if user is properly authenticated (has valid token)
+      const authToken = localStorage.getItem('auth_token');
+      const userToken = userData.token;
+      console.log('🔍 Auth check:', { 
+        hasAuthToken: !!authToken, 
+        hasUserToken: !!userToken,
+        isAuthenticated: isUserAuthenticated()
+      });
+      
+      if (isUserAuthenticated()) {
+        setUser(userData);
+      } else {
+        // Clear invalid user data and force re-authentication
+        console.log('⚠️ User exists but no valid auth token found, clearing data and requiring re-authentication');
+        localStorage.removeItem('cabBookerUser');
+        setUser(null);
+        setShowAuthModal(true);
+      }
     }
 
     // Get initial trip type from URL params if available
@@ -92,9 +112,25 @@ const TripBookingForm = () => {
   };
 
   const handleAuthSuccess = (userData) => {
+    console.log('📝 handleAuthSuccess called with:', userData);
+    
     setUser(userData);
     localStorage.setItem('cabBookerUser', JSON.stringify(userData));
+    
+    // Also store the token separately for API requests
+    if (userData.token) {
+      localStorage.setItem('auth_token', userData.token);
+      console.log('✅ Token stored in auth_token');
+    } else {
+      console.log('⚠️ No token in userData');
+    }
+    
     setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    navigate('/landing-page');
   };
 
   const validateForm = () => {
@@ -268,6 +304,7 @@ const TripBookingForm = () => {
       <Header 
         user={user} 
         onAuthRequired={handleAuthRequired}
+        onLogout={handleLogout}
       />
       <TripStatusIndicator 
         activeTrip={activeTrip}

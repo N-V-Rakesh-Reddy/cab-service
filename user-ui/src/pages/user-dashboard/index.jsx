@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ApiService from '../../utils/api';
 import Header from '../../components/ui/Header';
 import MobileBottomNavigation from '../../components/ui/MobileBottomNavigation';
 import TripStatusIndicator from '../../components/ui/TripStatusIndicator';
@@ -148,11 +149,25 @@ const UserDashboard = () => {
   const handleAuthSuccess = (userData) => {
     setUser(userData);
     localStorage.setItem('cabBookerUser', JSON.stringify(userData));
+    
+    // Also store the token separately for API requests
+    if (userData.token) {
+      localStorage.setItem('auth_token', userData.token);
+    }
+    
     setShowAuthModal(false);
     // Load mock data after authentication
     setActiveTrip(mockActiveTrip);
     setRecentTrips(mockRecentTrips);
     setNotifications(mockNotifications);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setActiveTrip(null);
+    setRecentTrips([]);
+    setNotifications([]);
+    navigate('/landing-page');
   };
 
   const handleContactDriver = () => {
@@ -225,6 +240,7 @@ const UserDashboard = () => {
       <Header 
         user={user} 
         onAuthRequired={handleAuthRequired}
+        onLogout={handleLogout}
       />
       
       <TripStatusIndicator

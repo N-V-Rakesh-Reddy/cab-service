@@ -10,6 +10,24 @@ class ApiError extends Error {
   }
 }
 
+// Utility function to check if user is properly authenticated
+export const isUserAuthenticated = () => {
+  const userDataStr = localStorage.getItem('cabBookerUser');
+  const authToken = localStorage.getItem('auth_token') || localStorage.getItem('cabBookerToken');
+  
+  if (!userDataStr) return false;
+  
+  let hasTokenInUserData = false;
+  try {
+    const userData = JSON.parse(userDataStr);
+    hasTokenInUserData = !!userData.token;
+  } catch (e) {
+    console.error('Error parsing user data:', e);
+  }
+  
+  return !!(authToken || hasTokenInUserData);
+};
+
 class ApiService {
   static async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -22,7 +40,21 @@ class ApiService {
     };
 
     // Add auth token if available
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('cabBookerToken');
+    let token = localStorage.getItem('auth_token') || localStorage.getItem('cabBookerToken');
+    
+    // If no direct token, check if it's in the user object
+    if (!token) {
+      const userDataStr = localStorage.getItem('cabBookerUser');
+      if (userDataStr) {
+        try {
+          const userData = JSON.parse(userDataStr);
+          token = userData.token;
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -99,6 +131,11 @@ class ApiService {
     const response = await this.post('/auth/refresh-token', {
       userId: userId
     });
+    return response.data;
+  }
+
+  static async logout() {
+    const response = await this.post('/auth/logout');
     return response.data;
   }
 
