@@ -26,6 +26,12 @@ const TripTypeSelector = ({ selectedType, onTypeChange, className = '' }) => {
       label: 'Airport',
       icon: 'Plane',
       description: 'Airport transfers'
+    },
+    {
+      id: 'package',
+      label: 'Package',
+      icon: 'Package',
+      description: 'Multi-day tour packages'
     }
   ];
 

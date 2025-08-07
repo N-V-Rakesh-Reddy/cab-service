@@ -56,7 +56,10 @@ class ApiService {
     }
     
     if (token) {
+      console.log('🔑 Adding auth token to request:', token.substring(0, 20) + '...');
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.log('⚠️ No auth token found for request');
     }
 
     try {
@@ -207,6 +210,29 @@ class ApiService {
 
   static async getCarTypesSummary() {
     const response = await this.get('/cars/types/summary');
+    return response;
+  }
+
+  // Package methods
+  static async getAvailablePackages(filters = {}) {
+    const queryParams = new URLSearchParams();
+    if (filters.vehicle_type) queryParams.append('vehicle_type', filters.vehicle_type);
+    if (filters.location) queryParams.append('location', filters.location);
+    if (filters.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters.offset) queryParams.append('offset', filters.offset.toString());
+    
+    const endpoint = `/packages${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await this.get(endpoint);
+    return response;
+  }
+
+  static async getPackageById(packageId) {
+    const response = await this.get(`/packages/${packageId}`);
+    return response;
+  }
+
+  static async bookPackage(packageId, bookingData) {
+    const response = await this.post(`/packages/${packageId}/book`, bookingData);
     return response;
   }
 }

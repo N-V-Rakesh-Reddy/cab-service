@@ -20,6 +20,7 @@ import TimePackageSelector from './components/TimePackageSelector';
 import FlightDetailsForm from './components/FlightDetailsForm';
 import IntermediateStops from './components/IntermediateStops';
 import FareEstimation from './components/FareEstimation';
+import PackageSelector from './components/PackageSelector';
 
 const TripBookingForm = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ const TripBookingForm = () => {
   const [intermediateStops, setIntermediateStops] = useState([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [selectedCar, setSelectedCar] = useState(null);
+  const [selectedPackage, setSelectedPackage] = useState(null);
   const [specialRequests, setSpecialRequests] = useState('');
   
   // Validation state
@@ -136,25 +138,28 @@ const TripBookingForm = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Basic validation
-    if (!pickupLocation?.trim()) {
-      newErrors.pickupLocation = 'Pickup location is required';
+    // Basic validation - skip for package bookings as they have different requirements
+    if (tripType !== 'package') {
+      if (!pickupLocation?.trim()) {
+        newErrors.pickupLocation = 'Pickup location is required';
+      }
+
+      if (tripType !== 'local' && !dropLocation?.trim()) {
+        newErrors.dropLocation = 'Drop location is required';
+      }
+
+      if (!selectedCar) {
+        newErrors.selectedCar = 'Please select a vehicle';
+      }
     }
 
-    if (tripType !== 'local' && !dropLocation?.trim()) {
-      newErrors.dropLocation = 'Drop location is required';
-    }
-
+    // Common validation for all trip types including packages
     if (!pickupDate) {
       newErrors.pickupDate = 'Pickup date is required';
     }
 
     if (!pickupTime) {
       newErrors.pickupTime = 'Pickup time is required';
-    }
-
-    if (!selectedCar) {
-      newErrors.selectedCar = 'Please select a vehicle';
     }
 
     // Round trip validation
@@ -182,7 +187,11 @@ const TripBookingForm = () => {
 
     // Package-specific validation
     if (tripType === 'package') {
-      // Package bookings have different validation rules
+      // Check for package - either from selection or pre-loaded from catalog
+      const hasPackage = selectedPackage || (packageData && location.state?.tripType === 'package');
+      if (!hasPackage) {
+        newErrors.selectedPackage = 'Please select a package';
+      }
       if (!pickupDate) {
         newErrors.pickupDate = 'Travel date is required';
       }
@@ -208,6 +217,18 @@ const TripBookingForm = () => {
       }
     }
 
+    // Car selection validation (only for non-package bookings)
+    if (tripType !== 'package' && !selectedCar) {
+      newErrors.selectedCar = 'Please select a vehicle';
+    }
+
+    console.log('🔍 Validation results:', {
+      newErrors,
+      hasErrors: Object.keys(newErrors)?.length > 0,
+      errorFields: Object.keys(newErrors),
+      errorMessages: newErrors
+    });
+    
     setErrors(newErrors);
     return Object.keys(newErrors)?.length === 0;
   };
@@ -215,7 +236,17 @@ const TripBookingForm = () => {
   const handleSubmit = async (e) => {
     e?.preventDefault();
     
+    console.log('🚀 Form submission started:', {
+      tripType,
+      hasSelectedPackage: !!selectedPackage,
+      hasPackageData: !!packageData,
+      isPackageBooking,
+      pickupDate,
+      pickupTime
+    });
+    
     if (!validateForm()) {
+      console.log('❌ Form validation failed');
       return;
     }
 
@@ -231,7 +262,7 @@ const TripBookingForm = () => {
       // Prepare booking data for API
       const bookingData = {
         booking_type: tripType.replace('-', '_'), // Convert to API format (one-way -> one_way)
-        package_id: tripType === 'package' ? location.state?.packageData?.id : undefined,
+        package_id: tripType === 'package' ? selectedPackage?.id : undefined,
         vehicle_type: selectedCar?.vehicle_type,
         car_id: selectedCar?.id,
         scheduled_at: new Date(`${pickupDate} ${pickupTime}`).toISOString(),
@@ -250,7 +281,25 @@ const TripBookingForm = () => {
       };
 
       // Call API to create booking
-      const createdBooking = await ApiService.createBooking(bookingData);
+      let createdBooking;
+      if (tripType === 'package') {
+        // Get package from either selected package or pre-loaded package data
+        const packageToBook = selectedPackage || packageData;
+        if (packageToBook) {
+          // Use package booking endpoint
+          const packageBookingData = {
+            scheduledAt: new Date(`${pickupDate} ${pickupTime}`).toISOString(),
+            passengerCount: passengerCount,
+            specialRequests: specialRequests
+          };
+          createdBooking = await ApiService.bookPackage(packageToBook.id, packageBookingData);
+        } else {
+          throw new Error('No package selected');
+        }
+      } else {
+        // Use regular booking endpoint
+        createdBooking = await ApiService.createBooking(bookingData);
+      }
 
       // Navigate to dashboard with success message
       navigate('/user-dashboard', { 
@@ -270,6 +319,12 @@ const TripBookingForm = () => {
   };
 
   const handleTripTypeChange = (newType) => {
+    // If package is selected, redirect to package catalog for better browsing experience
+    if (newType === 'package') {
+      navigate('/package-tours-catalog');
+      return;
+    }
+    
     setTripType(newType);
     // Clear type-specific fields when changing trip type
     if (newType !== 'round-trip') {
@@ -307,7 +362,17 @@ const TripBookingForm = () => {
 
   // Show package info if this is a package booking
   const packageData = location.state?.packageData;
-  const isPackageBooking = tripType === 'package' && packageData;
+  // Fix timing issue: check for package booking more reliably
+  const isPackageBooking = (tripType === 'package' && packageData) || (packageData && location.state?.tripType === 'package');
+  
+  // Debug logging
+  console.log('🔍 Trip Booking Debug:', {
+    tripType,
+    hasPackageData: !!packageData,
+    locationTripType: location.state?.tripType,
+    isPackageBooking,
+    packageTitle: packageData?.title
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -450,6 +515,26 @@ const TripBookingForm = () => {
             />
           </motion.div>
 
+          {/* Package Selection Section - Only show if package type is selected but no package is pre-selected */}
+          {tripType === 'package' && !isPackageBooking && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="space-y-6"
+            >
+              <PackageSelector
+                selectedPackage={selectedPackage}
+                onPackageChange={setSelectedPackage}
+                filters={{ 
+                  vehicle_type: selectedCar?.vehicle_type,
+                  location: pickupLocation 
+                }}
+                validationError={errors?.selectedPackage}
+              />
+            </motion.div>
+          )}
+
           {/* Advanced Options Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -478,12 +563,15 @@ const TripBookingForm = () => {
                 onPassengerChange={setPassengerCount}
               />
               
-              <VehicleSelector
-                selectedCar={selectedCar}
-                onCarChange={setSelectedCar}
-                filters={vehicleFilters}
-                validationError={errors?.selectedCar}
-              />
+              {/* Hide vehicle selector for package bookings as packages include vehicles */}
+              {tripType !== 'package' && (
+                <VehicleSelector
+                  selectedCar={selectedCar}
+                  onCarChange={setSelectedCar}
+                  filters={vehicleFilters}
+                  validationError={errors?.selectedCar}
+                />
+              )}
             </div>
 
             {/* Expandable Advanced Options */}
@@ -555,6 +643,7 @@ const TripBookingForm = () => {
               tripType={tripType}
               passengerCount={passengerCount}
               selectedCar={selectedCar}
+              selectedPackage={selectedPackage}
               timePackage={timePackage}
               intermediateStops={intermediateStops}
               packageData={packageData}

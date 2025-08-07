@@ -11,6 +11,7 @@ import PackageGrid from './components/PackageGrid';
 import PackageBookingModal from './components/PackageBookingModal';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import ApiService from '../../utils/api';
 
 const PackageToursCatalog = () => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ const PackageToursCatalog = () => {
   const [filters, setFilters] = useState({});
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [packages, setPackages] = useState([]);
+  const [allPackages, setAllPackages] = useState([]); // Store all loaded packages for filtering
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -193,18 +195,56 @@ const PackageToursCatalog = () => {
   useEffect(() => {
     // Filter and sort packages when dependencies change
     filterAndSortPackages();
-  }, [searchQuery, sortBy, filters]);
+  }, [searchQuery, sortBy, filters, allPackages]);
 
   const loadPackages = async () => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setPackages(mockPackages);
-    setLoading(false);
+    try {
+      console.log('🔍 Loading packages from API...');
+      const response = await ApiService.getAvailablePackages();
+      console.log('📦 API Response:', response);
+      
+      if (response.success && response.data) {
+        // Transform DB data to match the frontend format
+        const transformedPackages = response.data.map(pkg => ({
+          id: pkg.id,
+          title: pkg.title,
+          location: pkg.location,
+          description: pkg.description,
+          image: pkg.image_url || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500&h=300&fit=crop",
+          price: pkg.price,
+          originalPrice: Math.floor(pkg.price * 1.15), // Add 15% as original price for discount display
+          duration: pkg.duration_days,
+          rating: 4.5, // Default rating since not in DB
+          isPopular: Math.random() > 0.5, // Random popularity
+          discount: Math.floor(((Math.floor(pkg.price * 1.15) - pkg.price) / Math.floor(pkg.price * 1.15)) * 100),
+          highlights: pkg.segments?.map(seg => seg.location_name).filter(Boolean) || pkg.tags || [],
+          amenities: ["meals", "accommodation", "transport"], // Default amenities
+          type: pkg.vehicle_type || "adventure",
+          priceRange: pkg.price < 15000 ? "budget" : pkg.price < 25000 ? "mid" : "premium",
+          vehicle_type: pkg.vehicle_type,
+          tags: pkg.tags,
+          segments: pkg.segments
+        }));
+        
+        console.log('✅ Transformed packages:', transformedPackages);
+        setAllPackages(transformedPackages);
+        setPackages(transformedPackages);
+      } else {
+        throw new Error(response.error || 'Failed to load packages');
+      }
+    } catch (error) {
+      console.error('❌ Error loading packages:', error);
+      // Fallback to mock data on error
+      setAllPackages(mockPackages);
+      setPackages(mockPackages);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filterAndSortPackages = () => {
-    let filtered = [...mockPackages];
+    let filtered = [...allPackages];
 
     // Apply search filter
     if (searchQuery?.trim()) {
@@ -314,9 +354,22 @@ const PackageToursCatalog = () => {
 
   const handlePackageBookingConfirm = (pkg) => {
     // Navigate to booking form with package pre-filled
+    // Transform the package data back to the format expected by the booking form
+    const packageData = {
+      id: pkg.id,
+      title: pkg.title,
+      description: pkg.description,
+      location: pkg.location,
+      duration_days: pkg.duration,
+      price: pkg.price,
+      vehicle_type: pkg.vehicle_type,
+      tags: pkg.tags,
+      segments: pkg.segments
+    };
+    
     navigate('/trip-booking-form', { 
       state: { 
-        packageData: pkg,
+        packageData: packageData,
         tripType: 'package'
       } 
     });
