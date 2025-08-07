@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS package_segments (
     lng DECIMAL(9,6)
 );
 
--- DRIVERS (moved before BOOKINGS to satisfy foreign key constraint)
+-- DRIVERS (moved before CARS to satisfy foreign key constraint)
 CREATE TABLE IF NOT EXISTS drivers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR,
@@ -76,6 +76,41 @@ CREATE TABLE IF NOT EXISTS drivers (
     vehicle_number VARCHAR,
     vehicle_type VARCHAR DEFAULT 'sedan',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CARS
+DO $$ BEGIN
+    CREATE TYPE car_status AS ENUM ('available', 'booked', 'maintenance', 'inactive');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+CREATE TABLE IF NOT EXISTS cars (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    make VARCHAR NOT NULL,
+    model VARCHAR NOT NULL,
+    year INTEGER,
+    color VARCHAR,
+    license_plate VARCHAR UNIQUE NOT NULL,
+    vehicle_type VARCHAR NOT NULL, -- hatchback, sedan, suv, luxury
+    seating_capacity INTEGER DEFAULT 4,
+    fuel_type VARCHAR DEFAULT 'petrol', -- petrol, diesel, cng, electric
+    transmission VARCHAR DEFAULT 'manual', -- manual, automatic
+    features TEXT[], -- AC, GPS, Music System, etc.
+    base_price_per_km DECIMAL(5,2) DEFAULT 10.00,
+    price_multiplier DECIMAL(3,2) DEFAULT 1.0, -- matches frontend priceMultiplier
+    is_available BOOLEAN DEFAULT TRUE,
+    status car_status DEFAULT 'available',
+    mileage DECIMAL(5,2), -- km per liter or km per charge
+    registration_expiry DATE,
+    insurance_expiry DATE,
+    last_service_date DATE,
+    next_service_due DATE,
+    location_city VARCHAR,
+    location_area VARCHAR,
+    driver_id UUID REFERENCES drivers(id), -- Optional: assigned driver
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- BOOKINGS
@@ -104,6 +139,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     booking_type booking_type,
     status booking_status,
     vehicle_type VARCHAR,
+    car_id UUID REFERENCES cars(id), -- Reference to specific car
     scheduled_at TIMESTAMP,
     return_at TIMESTAMP,
     total_price DECIMAL,

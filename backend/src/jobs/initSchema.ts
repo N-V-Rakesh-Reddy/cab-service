@@ -28,12 +28,20 @@ async function runMigration() {
     console.log('✅ Schema created successfully');
   } catch (error) {
     console.error('❌ Error running schema migration:', error);
+    await client.end();
     process.exit(1);
   } finally {
     await client.end();
     console.log('🛑 DB connection closed');
-    process.exit(0);
   }
 }
 
-runMigration();
+runMigration()
+  .then(() => {
+    console.log('✨ Migration completed successfully');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('❌ Migration failed:', error);
+    process.exit(1);
+  });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ApiService, { isUserAuthenticated } from '../../utils/api';
@@ -14,7 +14,7 @@ import TripTypeSelector from './components/TripTypeSelector';
 import LocationInput from './components/LocationInput';
 import DateTimeSelector from './components/DateTimeSelector';
 import PassengerSelector from './components/PassengerSelector';
-import VehicleTypeSelector from './components/VehicleTypeSelector';
+import VehicleSelector from './components/VehicleSelector';
 import SpecialRequestsInput from './components/SpecialRequestsInput';
 import TimePackageSelector from './components/TimePackageSelector';
 import FlightDetailsForm from './components/FlightDetailsForm';
@@ -44,7 +44,7 @@ const TripBookingForm = () => {
   const [isArrival, setIsArrival] = useState(true);
   const [intermediateStops, setIntermediateStops] = useState([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const [vehicleType, setVehicleType] = useState('sedan');
+  const [selectedCar, setSelectedCar] = useState(null);
   const [specialRequests, setSpecialRequests] = useState('');
   
   // Validation state
@@ -153,6 +153,10 @@ const TripBookingForm = () => {
       newErrors.pickupTime = 'Pickup time is required';
     }
 
+    if (!selectedCar) {
+      newErrors.selectedCar = 'Please select a vehicle';
+    }
+
     // Round trip validation
     if (tripType === 'round-trip') {
       if (!returnDate) {
@@ -228,7 +232,8 @@ const TripBookingForm = () => {
       const bookingData = {
         booking_type: tripType.replace('-', '_'), // Convert to API format (one-way -> one_way)
         package_id: tripType === 'package' ? location.state?.packageData?.id : undefined,
-        vehicle_type: vehicleType,
+        vehicle_type: selectedCar?.vehicle_type,
+        car_id: selectedCar?.id,
         scheduled_at: new Date(`${pickupDate} ${pickupTime}`).toISOString(),
         return_at: tripType === 'round-trip' ? new Date(`${returnDate} ${returnTime}`).toISOString() : undefined,
         pickup_location: pickupLocation,
@@ -294,6 +299,11 @@ const TripBookingForm = () => {
     };
     return labels?.[tripType] || 'Trip Booking';
   };
+
+  // Memoize filters to prevent unnecessary re-renders
+  const vehicleFilters = useMemo(() => ({
+    seating_capacity: passengerCount
+  }), [passengerCount]);
 
   // Show package info if this is a package booking
   const packageData = location.state?.packageData;
@@ -468,9 +478,11 @@ const TripBookingForm = () => {
                 onPassengerChange={setPassengerCount}
               />
               
-              <VehicleTypeSelector
-                selectedVehicle={vehicleType}
-                onVehicleChange={setVehicleType}
+              <VehicleSelector
+                selectedCar={selectedCar}
+                onCarChange={setSelectedCar}
+                filters={vehicleFilters}
+                validationError={errors?.selectedCar}
               />
             </div>
 
@@ -542,7 +554,7 @@ const TripBookingForm = () => {
             <FareEstimation
               tripType={tripType}
               passengerCount={passengerCount}
-              vehicleType={vehicleType}
+              selectedCar={selectedCar}
               timePackage={timePackage}
               intermediateStops={intermediateStops}
               packageData={packageData}

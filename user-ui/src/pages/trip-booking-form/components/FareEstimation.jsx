@@ -6,7 +6,7 @@ import ApiService from '../../../utils/api';
 const FareEstimation = ({
   tripType,
   passengerCount = 1,
-  vehicleType = 'sedan',
+  selectedCar = null,
   timePackage = '8hr',
   intermediateStops = [],
   packageData = null,
@@ -28,7 +28,7 @@ const FareEstimation = ({
       }
 
       // Don't fetch if essential data is missing
-      if (!tripType || !vehicleType) {
+      if (!tripType || !selectedCar) {
         return;
       }
 
@@ -38,7 +38,8 @@ const FareEstimation = ({
       try {
         const params = {
           booking_type: tripType.replace('-', '_'), // Convert to API format
-          vehicle_type: vehicleType,
+          vehicle_type: selectedCar.vehicle_type,
+          car_id: selectedCar.id,
           pickup_location: pickupLocation || 'Unknown',
           drop_location: dropLocation || 'Unknown',
           time_package: timePackage,
@@ -58,7 +59,7 @@ const FareEstimation = ({
     };
 
     fetchFareEstimate();
-  }, [tripType, vehicleType, pickupLocation, dropLocation, timePackage, passengerCount, packageData]);
+  }, [tripType, selectedCar, pickupLocation, dropLocation, timePackage, passengerCount, packageData]);
 
   const getVehicleMultiplier = (vehicle) => {
     const multipliers = {
@@ -98,7 +99,7 @@ const FareEstimation = ({
 
     // Fallback to local calculation
     let baseFare = 0;
-    const vehicleMultiplier = getVehicleMultiplier(vehicleType);
+    const vehicleMultiplier = selectedCar ? selectedCar.price_multiplier : 1.0;
 
     switch (tripType) {
       case 'one-way':
@@ -136,6 +137,23 @@ const FareEstimation = ({
   };
 
   const fareBreakdown = calculateEstimatedFare();
+
+  // Show message when no car is selected (except for package bookings)
+  if (!selectedCar && tripType !== 'package') {
+    return (
+      <div className={`space-y-4 ${className}`}>
+        <h3 className="text-lg font-semibold text-foreground">Fare Estimation</h3>
+        <div className="p-6 bg-card rounded-xl border border-border">
+          <div className="text-center py-4">
+            <Icon name="Car" size={24} className="text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground">
+              Please select a vehicle to see fare estimation
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -184,7 +202,7 @@ const FareEstimation = ({
           <div className="flex items-center justify-between py-2">
                 <div className="flex items-center space-x-2">
                   <Icon name="Car" size={16} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">Vehicle Upgrade ({vehicleType})</span>
+                  <span className="text-muted-foreground">Vehicle ({selectedCar ? `${selectedCar.make} ${selectedCar.model}` : 'Not selected'})</span>
                 </div>
                 <span className="text-muted-foreground">+₹{fareBreakdown?.vehicleCharges?.toLocaleString()}</span>
               </div>

@@ -36,6 +36,7 @@ const TripTypeSelector = ({ selectedType, onTypeChange, className = '' }) => {
         {tripTypes?.map((type) => (
           <button
             key={type?.id}
+            type="button"
             onClick={() => onTypeChange(type?.id)}
             className={`p-4 rounded-xl border-2 transition-all duration-200 hover-lift ${
               selectedType === type?.id
