@@ -1,5 +1,5 @@
 // API utility for backend communication
-const API_BASE_URL = 'http://localhost:3000/api/v1';
+const API_BASE_URL = 'http://192.168.0.112:3000/api/v1';
 
 class ApiError extends Error {
   constructor(message, status, response) {
@@ -186,6 +186,28 @@ class ApiService {
     const queryParams = new URLSearchParams(params);
     const response = await this.get(`/bookings/fare-estimate?${queryParams.toString()}`);
     return response.data;
+  }
+
+  // Cars methods
+  static async getAvailableCars(filters = {}) {
+    const queryParams = new URLSearchParams();
+    if (filters.vehicle_type) queryParams.append('vehicle_type', filters.vehicle_type);
+    if (filters.location_city) queryParams.append('location_city', filters.location_city);
+    if (filters.seating_capacity) queryParams.append('seating_capacity', filters.seating_capacity.toString());
+    
+    const endpoint = `/cars${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await this.get(endpoint);
+    return response;
+  }
+
+  static async getCarById(carId) {
+    const response = await this.get(`/cars/${carId}`);
+    return response;
+  }
+
+  static async getCarTypesSummary() {
+    const response = await this.get('/cars/types/summary');
+    return response;
   }
 }
 

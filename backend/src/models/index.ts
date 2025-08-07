@@ -21,6 +21,7 @@ export type SegmentType = 'pickup' | 'drop' | 'intermediate';
 export type BookingType = 'one_way' | 'round_trip' | 'local' | 'airport' | 'package';
 export type BookingStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'failed' | 'refunded';
+export type CarStatus = 'available' | 'booked' | 'maintenance' | 'inactive';
 
 // =============================================================================
 // DATABASE TABLES (exactly matching SQL schema)
@@ -75,6 +76,33 @@ export interface PackageSegment {
   // Note: No timestamps in this table
 }
 
+// CARS table
+export interface Car extends BaseEntity {
+  make: string; // VARCHAR NOT NULL
+  model: string; // VARCHAR NOT NULL
+  year?: number; // INTEGER
+  color?: string; // VARCHAR
+  license_plate: string; // VARCHAR UNIQUE NOT NULL
+  vehicle_type: string; // VARCHAR NOT NULL (hatchback, sedan, suv, luxury)
+  seating_capacity?: number; // INTEGER DEFAULT 4
+  fuel_type?: string; // VARCHAR DEFAULT 'petrol'
+  transmission?: string; // VARCHAR DEFAULT 'manual'
+  features?: string[]; // TEXT[]
+  base_price_per_km?: number; // DECIMAL(5,2) DEFAULT 10.00
+  price_multiplier?: number; // DECIMAL(3,2) DEFAULT 1.0
+  is_available?: boolean; // BOOLEAN DEFAULT TRUE
+  status?: CarStatus; // car_status ENUM DEFAULT 'available'
+  mileage?: number; // DECIMAL(5,2)
+  registration_expiry?: string; // DATE
+  insurance_expiry?: string; // DATE
+  last_service_date?: string; // DATE
+  next_service_due?: string; // DATE
+  location_city?: string; // VARCHAR
+  location_area?: string; // VARCHAR
+  driver_id?: string; // UUID REFERENCES drivers(id)
+  // Note: updated_at is included from BaseEntity
+}
+
 // BOOKINGS table
 export interface Booking extends BaseEntity {
   user_id?: string; // UUID REFERENCES users(id)
@@ -82,6 +110,7 @@ export interface Booking extends BaseEntity {
   booking_type?: BookingType; // booking_type ENUM
   status?: BookingStatus; // booking_status ENUM
   vehicle_type?: string; // VARCHAR
+  car_id?: string; // UUID REFERENCES cars(id)
   scheduled_at?: string; // TIMESTAMP
   return_at?: string; // TIMESTAMP
   total_price?: number; // DECIMAL
@@ -198,6 +227,13 @@ export type UserInsert = Omit<User, 'id' | 'created_at' | 'updated_at'> & {
 
 export type BookingInsert = Omit<Booking, 'id' | 'created_at' | 'updated_at'>;
 
+export type CarInsert = Omit<Car, 'id' | 'created_at' | 'updated_at'> & {
+  make: string; // Ensure required field
+  model: string; // Ensure required field
+  license_plate: string; // Ensure required field
+  vehicle_type: string; // Ensure required field
+};
+
 export type TestItemInsert = Omit<TestItem, 'id' | 'created_at' | 'updated_at'> & {
   name: string; // Ensure required field
 };
@@ -205,6 +241,7 @@ export type TestItemInsert = Omit<TestItem, 'id' | 'created_at' | 'updated_at'> 
 // Type for database update operations (excludes immutable fields)
 export type UserUpdate = Partial<Omit<User, 'id' | 'created_at' | 'mobile_number'>>;
 export type BookingUpdate = Partial<Omit<Booking, 'id' | 'created_at' | 'user_id'>>;
+export type CarUpdate = Partial<Omit<Car, 'id' | 'created_at' | 'license_plate'>>;
 
 // =============================================================================
 // TYPE GUARDS FOR RUNTIME TYPE CHECKING
@@ -224,4 +261,12 @@ export function isValidOtpStatus(status: string): status is OtpStatus {
 
 export function isValidPaymentStatus(status: string): status is PaymentStatus {
   return ['unpaid', 'paid', 'failed', 'refunded'].includes(status);
+}
+
+export function isValidCarStatus(status: string): status is CarStatus {
+  return ['available', 'booked', 'maintenance', 'inactive'].includes(status);
+}
+
+export function isValidVehicleType(type: string): boolean {
+  return ['hatchback', 'sedan', 'suv', 'luxury'].includes(type);
 }

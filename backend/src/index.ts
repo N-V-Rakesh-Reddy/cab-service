@@ -19,7 +19,7 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:4028', 'http://localhost:5173'], // Allow frontend origins
+  origin: ['http://localhost:3000', 'http://localhost:4028', 'http://localhost:5173', 'http://192.168.0.112:4028', 'http://192.168.0.112:3000'], // Allow frontend origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

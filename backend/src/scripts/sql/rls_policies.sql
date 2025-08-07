@@ -6,6 +6,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE otp_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE package_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trip_segments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
@@ -123,6 +124,22 @@ CREATE POLICY "Users can view own trip segments"
       SELECT id FROM bookings WHERE user_id = auth.uid()
     )
   );
+
+-- ========================================
+-- CARS TABLE POLICIES
+-- ========================================
+
+-- ✅ Backend full access
+CREATE POLICY "Allow backend full access to cars"
+  ON cars
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- ✅ Allow public to view available cars (for booking selection)
+CREATE POLICY "Public can view available cars"
+  ON cars
+  FOR SELECT
+  USING (is_available = true AND status = 'available');
 
 -- ========================================
 -- DRIVERS TABLE POLICIES (FUTURE USE)
