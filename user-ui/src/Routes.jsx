@@ -9,6 +9,12 @@ import LandingPage from './pages/landing-page';
 import UserDashboard from './pages/user-dashboard';
 import TripBookingForm from './pages/trip-booking-form';
 import UserProfile from './pages/user-profile';
+import AboutUs from './pages/about-us';
+import OurFleet from './pages/our-fleet';
+import HelpCenter from './pages/help-center';
+import ContactUs from './pages/contact-us';
+import TermsOfService from './pages/terms-of-service';
+import PrivacyPolicy from './pages/privacy-policy';
 
 const Routes = () => {
   return (
@@ -24,6 +30,12 @@ const Routes = () => {
         <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/trip-booking-form" element={<TripBookingForm />} />
         <Route path="/user-profile" element={<UserProfile />} />
+        <Route path="/about-us" element={<AboutUs />} />
+        <Route path="/our-fleet" element={<OurFleet />} />
+        <Route path="/help-center" element={<HelpCenter />} />
+        <Route path="/contact-us" element={<ContactUs />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
       </ErrorBoundary>

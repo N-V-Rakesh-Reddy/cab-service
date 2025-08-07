@@ -19,21 +19,17 @@ const Footer = () => {
     {
       title: 'Company',
       links: [
-        { label: 'About Us', href: '#' },
-        { label: 'Our Fleet', href: '#' },
-        { label: 'Careers', href: '#' },
-        { label: 'Press', href: '#' },
-        { label: 'Blog', href: '#' }
+        { label: 'About Us', href: '/about-us' },
+        { label: 'Our Fleet', href: '/our-fleet' }
       ]
     },
     {
       title: 'Support',
       links: [
-        { label: 'Help Center', href: '#' },
-        { label: 'Contact Us', href: '#' },
-        { label: 'Safety', href: '#' },
-        { label: 'Terms of Service', href: '#' },
-        { label: 'Privacy Policy', href: '#' }
+        { label: 'Help Center', href: '/help-center' },
+        { label: 'Contact Us', href: '/contact-us' },
+        { label: 'Terms of Service', href: '/terms-of-service' },
+        { label: 'Privacy Policy', href: '/privacy-policy' }
       ]
     }
   ];
